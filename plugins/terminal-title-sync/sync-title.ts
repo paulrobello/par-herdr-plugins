@@ -45,20 +45,22 @@ export function clean(value: unknown): string {
     .slice(0, MAX_TITLE_LEN);
 }
 
-/**
- * Highest-priority source. A reported task title wins; otherwise the detected
- * agent's display name. Returns "" when no agent context is available so the
- * resolver falls through to tab/space titles.
- */
+/** The reported agent task title (e.g. "Refactor auth") — the top-priority source. */
 export function agentTitle(pane: PaneInfo): string {
-  const title = clean(pane.title);
-  if (title) return title;
+  return clean(pane.title);
+}
+
+/** The detected agent's bare name (e.g. "claude") — a last-resort fallback. */
+export function agentName(pane: PaneInfo): string {
   return clean(pane.display_agent) || clean(pane.agent);
 }
 
 /**
- * Resolve the title purely from pane/tab/workspace data:
- * agent_title > tab_title > space_title > "herdr".
+ * Resolve the title from pane/tab/workspace data:
+ * agent task title > tab_title > space_title > bare agent name > "herdr".
+ *
+ * The bare agent name is deliberately last: a set tab or workspace label is more
+ * informative than a near-constant name like "claude".
  */
 export function pickTitle(
   pane: PaneInfo,
@@ -73,6 +75,9 @@ export function pickTitle(
 
   const fromSpace = clean(workspace?.label);
   if (fromSpace) return fromSpace;
+
+  const fromName = agentName(pane);
+  if (fromName) return fromName;
 
   return "herdr";
 }

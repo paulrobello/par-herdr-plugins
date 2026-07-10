@@ -7,10 +7,10 @@ that track the terminal title (Moshi, iTerm, terminal tab bars) — the role tmu
 
 The title is resolved in strict priority order — the first available source wins:
 
-1. **agent_title** — the focused pane's agent task title (e.g. `Refactor auth`),
-   or the detected agent's name (e.g. `claude`) when no task title is reported.
+1. **agent_title** — the focused pane's reported agent task title (e.g. `Refactor auth`).
 2. **tab_title** — the focused tab's label.
 3. **space_title** — the focused workspace's label.
+4. the detected agent's bare name (e.g. `claude`) — used only when no tab or space label is set.
 
 Lower-priority sources are not appended; the first non-empty value is used. If all
 are empty the title falls back to `herdr`.

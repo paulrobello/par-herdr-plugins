@@ -9,9 +9,10 @@
 A Herdr plugin that automatically sets the **outer terminal window title** to the
 most meaningful label of the focused pane, resolved in strict priority order:
 
-1. **agent_title** — the focused pane's agent task title (highest priority)
+1. **agent_title** — the focused pane's reported agent task title (highest priority)
 2. **tab_title** — the focused tab's label
-3. **space_title** — the focused workspace's label (lowest priority)
+3. **space_title** — the focused workspace's label
+4. the detected agent's bare name (e.g. "claude") — last-resort fallback, below any set label
 
 The first non-empty value wins; lower-priority sources are **not** appended. This
 makes Herdr sessions show a useful title in outer terminals/clients that track the
@@ -59,19 +60,19 @@ Pure, side-effect-free function under test:
 
 ```
 pickTitle(pane, tab, workspace):
-  agent_title   = pane.title, else (pane.display_agent || pane.agent) if an agent is detected
-  tab_title     = tab.label
-  space_title   = workspace.label
-  return first non-empty of [agent_title, tab_title, space_title], else "herdr"
+  agent_task_title = pane.title                          # reported task title only
+  tab_title        = tab.label
+  space_title      = workspace.label
+  agent_name       = pane.display_agent || pane.agent    # bare name, lowest priority
+  return first non-empty of [agent_task_title, tab_title, space_title, agent_name], else "herdr"
 ```
 
-**`agent_title` semantics (decided default, easy to change):** the reported task
-title (`pane.title`, e.g. "Refactor auth middleware") when an integration reports
-one; otherwise the detected agent's display name (`display_agent`, falling back to
-`agent`, e.g. "claude"). Rationale: an active agent should produce a title so the
-highest-priority tier is meaningful, matching the reference plugin's intent. To
-restrict `agent_title` to *only* reported task titles, drop the agent-name
-fallback in `agentTitle()` — a one-line change.
+**`agent_title` means the *reported* task title** (`pane.title`, e.g. "Refactor
+auth middleware") — not the bare agent name. The detected agent's bare name
+(`display_agent`, falling back to `agent`, e.g. "claude") is a separate,
+lowest-priority fallback so that a set tab or workspace label wins over the
+near-constant "claude". If you want the bare name to rank above the space title,
+move the `agentName(pane)` check above `fromSpace` in `pickTitle()`.
 
 Title text is **sanitized** before use because it is emitted via OSC: strip C0
 control chars and DEL, collapse whitespace, trim, cap length. A **dedup state

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { agentTitle, clean, pickTitle } from "./sync-title";
+import { agentName, agentTitle, clean, pickTitle } from "./sync-title";
 
 describe("clean", () => {
   it("strips control characters", () => {
@@ -21,30 +21,44 @@ describe("clean", () => {
 });
 
 describe("agentTitle", () => {
-  it("prefers the reported task title", () => {
+  it("returns the reported task title", () => {
     expect(agentTitle({ title: "Refactor auth", agent: "claude" })).toBe("Refactor auth");
   });
-  it("falls back to display_agent then agent", () => {
-    expect(agentTitle({ display_agent: "Claude", agent: "claude" })).toBe("Claude");
-    expect(agentTitle({ agent: "claude" })).toBe("claude");
-  });
-  it("is empty when no agent context is present", () => {
+  it("is empty when no task title is reported (the bare name is not agent_title)", () => {
+    expect(agentTitle({ display_agent: "Claude", agent: "claude" })).toBe("");
+    expect(agentTitle({ agent: "claude" })).toBe("");
     expect(agentTitle({})).toBe("");
   });
 });
 
-describe("pickTitle priority (agent_title > tab_title > space_title)", () => {
-  it("agent task title outranks tab and space", () => {
+describe("agentName", () => {
+  it("prefers display_agent then agent", () => {
+    expect(agentName({ display_agent: "Claude", agent: "claude" })).toBe("Claude");
+    expect(agentName({ agent: "claude" })).toBe("claude");
+  });
+  it("is empty when no agent is detected", () => {
+    expect(agentName({})).toBe("");
+  });
+});
+
+describe("pickTitle priority (task title > tab_title > space_title > agent name)", () => {
+  it("reported task title outranks everything", () => {
     expect(
       pickTitle({ title: "ship it", agent: "claude" }, { label: "plugins" }, { label: "general" }),
     ).toBe("ship it");
   });
-  it("agent name still outranks tab and space when no task title", () => {
+  it("tab_title beats the bare agent name", () => {
     expect(pickTitle({ agent: "claude" }, { label: "plugins" }, { label: "general" })).toBe(
-      "claude",
+      "plugins",
     );
   });
-  it("tab_title is used when there is no agent title", () => {
+  it("space_title beats the bare agent name", () => {
+    expect(pickTitle({ agent: "claude" }, null, { label: "general" })).toBe("general");
+  });
+  it("bare agent name is used only when no tab or space label is set", () => {
+    expect(pickTitle({ agent: "claude" }, null, null)).toBe("claude");
+  });
+  it("tab_title is used when there is no agent", () => {
     expect(pickTitle({}, { label: "plugins" }, { label: "general" })).toBe("plugins");
   });
   it("space_title is used when there is no tab", () => {
