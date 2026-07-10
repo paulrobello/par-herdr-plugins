@@ -1,0 +1,8 @@
+{
+  "name": "par-terminal-title-sync",
+  "version": "0.1.0",
+  "description": "Herdr plugin: set the outer terminal title from the focused agent, tab, or workspace.",
+  "type": "module",
+  "license": "MIT",
+  "private": true
+}
