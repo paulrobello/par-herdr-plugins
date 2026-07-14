@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt typecheck checkall
+.PHONY: build test lint fmt typecheck checkall pre-commit pre-commit-update
 
 # Plugins run from TypeScript source via Bun, so "build" is a compile smoke check
 # (bundles the entrypoint to a throwaway dir to prove it type-checks/transpiles).
@@ -20,3 +20,11 @@ fmt:
 # Full gate: type-check, lint, then tests. Must pass with zero errors.
 checkall: typecheck lint test
 	@echo "checkall passed"
+
+# Run every pre-commit hook across the whole repo.
+pre-commit:
+	pre-commit run --all-files
+
+# Bump hook revs to their latest.
+pre-commit-update:
+	pre-commit autoupdate

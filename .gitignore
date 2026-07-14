@@ -1,4 +1,36 @@
-node_modules/
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+*-mcp.json
+
+# Logs and runtime output
 *.log
+*.pid
+*.seed
+*.tmp
+tmp/
+temp/
+
+# OS and editor noise
 .DS_Store
-/tmp/
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Agent/tool local state
+.claude/.cc2cc-session-id
+.claude/scheduled_tasks.lock
+.claude/statusline-*
+
+# Language/build artifacts
+build/
+dist/
+coverage/
+.cache/
+node_modules/
+.build/
