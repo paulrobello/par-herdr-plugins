@@ -10,10 +10,13 @@
 
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 const HERDR = process.env.HERDR_BIN_PATH || "herdr";
-const STATE_DIR = process.env.HERDR_PLUGIN_STATE_DIR || "/tmp";
+// Fall back to a per-user, plugin-namespaced temp dir so a manual run (no Herdr
+// injection) is safe on shared/multi-user machines and portable across OSes.
+const STATE_DIR = process.env.HERDR_PLUGIN_STATE_DIR || join(tmpdir(), "herdr-terminal-title-sync");
 const STATE_PATH = join(STATE_DIR, "last-title");
 
 // The title travels through an OSC escape sequence; keep it bounded and
