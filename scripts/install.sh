@@ -19,6 +19,19 @@ REPO_CONFIG="$REPO_ROOT/config/herdr/config.toml"
 HERDR_CONFIG_DIR="${HOME}/.config/herdr"
 HERDR_CONFIG="$HERDR_CONFIG_DIR/config.toml"
 
+# Prerequisite: Herdr must have been launched at least once. Running `herdr`
+# starts its persistent server and creates ~/.config/herdr, which the CLI (and
+# therefore this script) needs. Without it, `herdr plugin link` fails with a
+# cryptic NotFound. The config dir is the "has Herdr run here?" signal.
+if [ ! -d "$HERDR_CONFIG_DIR" ]; then
+  echo "ERROR: Herdr has not been initialized on this system (no ${HERDR_CONFIG_DIR})." >&2
+  echo "       Run 'herdr' once to start the server and create its config dir," >&2
+  echo "       then re-run 'make install'." >&2
+  echo "       Install Herdr first if needed:  brew install herdr" >&2
+  echo "         or:  curl -fsSL https://herdr.dev/install.sh | sh" >&2
+  exit 1
+fi
+
 echo "==> Linking local plugins"
 for manifest in "$PLUGIN_DIR"/*/herdr-plugin.toml; do
   [ -f "$manifest" ] || continue
