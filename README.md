@@ -10,6 +10,22 @@ installable.
 | --- | --- |
 | [terminal-title-sync](./plugins/terminal-title-sync) | Set the outer terminal title from the focused agent, tab, or workspace (`agent_title` > `tab_title` > `space_title`). |
 
+## Prerequisites
+
+- **Herdr 0.7.0+** — install from Homebrew or the official script:
+  ```sh
+  brew install herdr
+  # or
+  curl -fsSL https://herdr.dev/install.sh | sh
+  ```
+- **Bun** on `PATH` (plugins are TypeScript run directly by Bun).
+- **Run Herdr once before `make install`.** `make install` drives Herdr through
+  its CLI, which talks to Herdr's persistent server over `~/.config/herdr/herdr.sock`.
+  If Herdr has never been launched, that socket and `~/.config/herdr/` don't exist
+  yet and `make install` fails (the installer checks for this and tells you). Run
+  `herdr` once to start the server and initialize its config dir, then re-run
+  `make install`.
+
 ## Install a plugin
 
 Install everything at once — this repo's plugin(s) linked from local source, the
