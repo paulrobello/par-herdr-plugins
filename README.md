@@ -29,8 +29,9 @@ installable.
 ## Install a plugin
 
 Install everything at once — this repo's plugin(s) linked from local source, the
-[recommended third-party plugins](#recommended-plugins), and the Herdr config
-symlink (an existing config is backed up first):
+[recommended third-party plugins](#recommended-plugins), the Herdr config
+symlink, and the Claude Code `herdr` skill symlinked into `~/.claude/skills/`
+(existing config/skill paths are backed up first):
 
 ```sh
 make install

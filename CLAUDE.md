@@ -70,6 +70,7 @@ Idempotent and re-run-safe:
 - Links every `plugins/*/herdr-plugin.toml` from local source (re-linking is a no-op).
 - Installs recommended third-party plugins only when not already present (detected via `herdr plugin list --json` `plugin_id` match) — re-running never bumps pinned versions; a per-plugin install failure is reported, not fatal.
 - Backs up an existing `~/.config/herdr/config.toml` to a timestamped `.bak` before symlinking the repo config; skips if already symlinked to the repo config; leaves a symlink pointing elsewhere untouched.
+- Symlinks the Claude Code skill (`skills/herdr`) into `~/.claude/skills/herdr` with the same idempotent back-up / skip / leave-foreign-symlink logic.
 - `herdr server reload-config` is non-fatal.
 
 ## Conventions

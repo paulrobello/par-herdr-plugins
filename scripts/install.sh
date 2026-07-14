@@ -4,12 +4,13 @@
 #   - link every plugin under plugins/ from local source (so edits take effect)
 #   - install the recommended third-party plugins (only if not already present)
 #   - back up any existing ~/.config/herdr/config.toml, then symlink the repo config
+#   - symlink the Claude Code skill (skills/herdr) into ~/.claude/skills/herdr
 #   - reload the running Herdr server's config
 #
 # Safe to re-run: already-installed third-party plugins are skipped (detected
-# from `herdr plugin list --json`), the local link is idempotent, an existing
-# config is preserved as a timestamped .bak, and a per-plugin install failure is
-# reported but does not abort the run.
+# from `herdr plugin list --json`), the local link is idempotent, existing
+# config/skill paths are preserved as a timestamped .bak before symlinking, and
+# a per-plugin install failure is reported but does not abort the run.
 #
 set -euo pipefail
 
@@ -18,6 +19,31 @@ PLUGIN_DIR="$REPO_ROOT/plugins"
 REPO_CONFIG="$REPO_ROOT/config/herdr/config.toml"
 HERDR_CONFIG_DIR="${HOME}/.config/herdr"
 HERDR_CONFIG="$HERDR_CONFIG_DIR/config.toml"
+CLAUDE_SKILLS_DIR="${HOME}/.claude/skills"
+REPO_SKILL="$REPO_ROOT/skills/herdr"
+
+# symlink_to_repo <target> <repo_source>
+# Idempotent: skip if target already symlinks to repo_source; back up an existing
+# real file/dir to a timestamped .bak; leave a symlink pointing elsewhere untouched.
+symlink_to_repo() {
+  local target="$1" src="$2"
+  if [ -L "$target" ]; then
+    current="$(readlink "$target")"
+    if [ "$current" = "$src" ]; then
+      echo "    skip: ${target} already symlinks to repo"
+    else
+      echo "    note: ${target} is a symlink to ${current} — left unchanged"
+    fi
+  elif [ -e "$target" ]; then
+    backup="${target}.bak.$(date +%Y%m%d%H%M%S)"
+    echo "    back up existing ${target} -> ${backup}"
+    mv "$target" "$backup"
+    ln -s "$src" "$target"
+  else
+    echo "    symlink: ${target} -> ${src}"
+    ln -s "$src" "$target"
+  fi
+}
 
 # Prerequisite: Herdr must have been launched at least once. Running `herdr`
 # starts its persistent server and creates ~/.config/herdr, which the CLI (and
@@ -61,21 +87,11 @@ install_if_missing ntindle.herdr-resurrect ntindle/herdr-resurrect
 
 echo "==> Symlinking Herdr config -> ${REPO_CONFIG}"
 mkdir -p "$HERDR_CONFIG_DIR"
-if [ -L "$HERDR_CONFIG" ]; then
-  current="$(readlink "$HERDR_CONFIG")"
-  if [ "$current" = "$REPO_CONFIG" ]; then
-    echo "    skip: already symlinks to the repo config"
-  else
-    echo "    note: existing symlink points at ${current} — left unchanged"
-  fi
-elif [ -e "$HERDR_CONFIG" ]; then
-  backup="${HERDR_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
-  echo "    back up existing config -> ${backup}"
-  mv "$HERDR_CONFIG" "$backup"
-  ln -s "$REPO_CONFIG" "$HERDR_CONFIG"
-else
-  ln -s "$REPO_CONFIG" "$HERDR_CONFIG"
-fi
+symlink_to_repo "$HERDR_CONFIG" "$REPO_CONFIG"
+
+echo "==> Symlinking Claude Code skill -> ${REPO_SKILL}"
+mkdir -p "$CLAUDE_SKILLS_DIR"
+symlink_to_repo "${CLAUDE_SKILLS_DIR}/herdr" "$REPO_SKILL"
 
 echo "==> Reloading Herdr config"
 herdr server reload-config || echo "    warn: could not reload (herdr server not running?)"
