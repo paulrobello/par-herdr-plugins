@@ -18,7 +18,7 @@ are empty the title falls back to `herdr`.
 ## Install
 
 ```sh
-herdr plugin install <github-owner>/par-herdr-plugins/plugins/terminal-title-sync
+herdr plugin install paulrobello/par-herdr-plugins/plugins/terminal-title-sync
 ```
 
 For local development:
