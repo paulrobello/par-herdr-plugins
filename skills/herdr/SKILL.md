@@ -39,6 +39,26 @@ herdr api snapshot        # full live state, one JSON document
 best command to orient before acting. For a lighter health/version check use
 `herdr status`.
 
+## CLI newer than the server — `snapshot` / pane commands fail
+
+The CLI and the background server speak a versioned protocol. After a CLI
+upgrade they can drift (e.g. CLI `0.7.5` / protocol 17 against a still-running
+server `0.7.3` / protocol 16). When the CLI is newer, `herdr api snapshot` and
+every pane-driving command fail with a `protocol_mismatch` error ("client
+protocol N is newer than server protocol M"). Detect it before you rely on the
+CLI:
+
+```sh
+herdr status --json   # look for server.compatible == false, server.restart_needed == true
+```
+
+The only fix is to restart the server — and **`herdr server stop` (then relaunch
+Herdr) closes every existing pane and session system-wide**, not just this
+task's, so confirm nothing else is running in Herdr first. If you can't restart
+because other work is live, skip pane-driving and do the work directly in the
+current session instead: the mismatch only blocks CLI-to-server calls, not your
+own session.
+
 ## Output is JSON by default
 
 Query/management commands (`workspace/tab/pane list`, `get`, …) print a JSON
