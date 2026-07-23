@@ -81,9 +81,9 @@ A few human-readable commands opt into JSON with `--json`: `status`,
 | Workspaces — create/focus/rename/close | `herdr workspace …` → **workspace.md** |
 | Tabs — create/focus/rename/close | `herdr tab …` → **tab.md** |
 | Panes — split/move/swap/resize/zoom/read/send | `herdr pane …` → **pane.md** |
-| Agents — start/send/wait/attach/explain | `herdr agent …` → **agent.md** |
-| Block until pane shows text | `herdr wait output <pane> --match "<text>" [--regex] [--timeout MS]` |
-| Block until agent reaches a status | `herdr wait agent-status <pane> --status idle\|working\|blocked\|done\|unknown [--timeout MS]` |
+| Agents — start/prompt/send-keys/wait/attach/explain | `herdr agent …` → **agent.md** |
+| Block until pane shows text | `herdr pane wait-output <pane> (--match "<text>" \| --regex PAT) [--timeout MS]` |
+| Block until agent reaches a status | `herdr agent wait <target> [--until idle\|working\|blocked\|done\|unknown]... [--timeout MS]` |
 | Named sessions | `herdr session list\|attach\|stop\|delete <name>` |
 | Git worktrees (per workspace) | `herdr worktree list\|create\|open\|remove` |
 | Agent integrations | `herdr integration install <name>` · `integration uninstall <name>` · `integration status [--outdated-only]` |
@@ -101,12 +101,16 @@ Integration names: `pi`, `omp`, `claude`, `codex`, `copilot`, `devin`, `droid`,
 Four commands, four behaviors. Picking the wrong one is the most common agent
 mistake:
 
-| Command | Sends | Presses Enter? |
+| Command | Sends | Submits? |
 | --- | --- | --- |
-| `pane run <id> "<cmd>"` | command text | **yes** |
+| `pane run <id> "<cmd>"` | command text | **yes** (text + Enter) |
 | `pane send-text <id> "<text>"` | literal text | no |
 | `pane send-keys <id> <key> [key…]` | named keys (`Enter`, `C-c`, `Up`) | only if you send `Enter` |
-| `agent send <target> "<text>"` | literal text | no — *"use `pane run` when you want Enter"* |
+| `agent prompt <target> "<text>"` | a prompt to an agent | **yes** (submits it) |
+| `agent send-keys <target> <key>…` | named keys to an agent | only if you send `Enter` |
+
+There is no "literal text, no submit" **agent** command — for that, send
+`pane send-text <id> "<text>"` to the agent's own pane.
 
 Run a shell command in a pane: `herdr pane run w4:pD "make test"`.
 Interrupt it: `herdr pane send-keys w4:pD C-c`.
@@ -116,7 +120,7 @@ Interrupt it: `herdr pane send-keys w4:pD C-c`.
 1. **Orient** — `herdr api snapshot` (or `herdr pane current` for just the focused pane).
 2. **Capture ids** — pull the exact `workspace_id` / `tab_id` / `pane_id` you need.
 3. **Act** — create / focus / split / send / move using those ids.
-4. **Confirm** — `pane read` / `wait output` / `agent wait` to verify the effect.
+4. **Confirm** — `pane read` / `pane wait-output` / `agent wait` to verify the effect.
 
 ## Essentials
 
@@ -125,10 +129,11 @@ Interrupt it: `herdr pane send-keys w4:pD C-c`.
 - **`pane current`** returns the focused pane when run with no caller terminal
   (plugin/hook context); inside an interactive pane it returns *that* pane. Force
   one with `--current` or `--pane <id>`.
-- **Agent targets** (`agent get/send/focus/wait/attach/read`) accept a terminal
-  id, unique agent name, detected/reported agent label, or legacy pane id.
-- **`agent_status`** values: `idle`, `working`, `blocked`, `unknown` (`wait
-  agent-status` also accepts `done`).
+- **Agent targets** (`agent get/prompt/send-keys/focus/wait/attach/read`) accept a
+  terminal id, unique agent name, detected/reported agent label, or legacy pane id.
+- **`agent_status`** values: `idle`, `working`, `blocked`, `unknown`, `done`.
+  `agent wait` and `agent prompt --until` accept any of them; without `--until`,
+  `agent wait` matches `idle|done|blocked`.
 - **Direct attach** (`terminal attach`) is tmux-style: detach with `Ctrl-b q`;
   send a literal `Ctrl-b` with `Ctrl-b Ctrl-b`.
 - **Env on create** — `workspace/tab create` and `pane split` accept repeated
@@ -140,8 +145,8 @@ Interrupt it: `herdr pane send-keys w4:pD C-c`.
 - **tab.md** — full tab command reference and patterns.
 - **pane.md** — full pane reference (split, move, swap, resize, zoom, read,
   send-text/send-keys/run, agent reporting).
-- **agent.md** — agent lifecycle (start, send, wait, attach, explain) and how
-  agents relate to panes.
+- **agent.md** — agent lifecycle (start, prompt, send-keys, wait, attach, explain)
+  and how agents relate to panes.
 
 ## Requirements
 

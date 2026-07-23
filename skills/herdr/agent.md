@@ -8,8 +8,8 @@ commands interoperate freely.
 
 ## Targets are flexible
 
-`agent get/send/read/rename/focus/wait/attach` take a **`<target>`** that can be
-any of:
+`agent get/prompt/send-keys/read/rename/focus/wait/attach` take a **`<target>`**
+that can be any of:
 
 - a terminal id (`term_…`),
 - a unique **agent name**,
@@ -22,38 +22,52 @@ Find what's running first with `agent list` or `api snapshot` → `agents`.
 
 ```sh
 herdr agent list
-herdr agent get    <target>
-herdr agent read   <target> [--source V] [--lines N] [--format F] [--ansi]   # same options as pane read
-herdr agent send   <target> "<text>"          # LITERAL text, NO Enter
-herdr agent rename <target> <name> | --clear
-herdr agent focus  <target>
-herdr agent wait   <target> --status idle|working|blocked|unknown [--timeout MS]
-herdr agent attach <target> [--takeover]
-herdr agent explain <target> [--json]
-herdr agent explain --file <path> --agent <label> [--json]
+herdr agent get       <target>
+herdr agent read      <target> [--source visible|recent|recent-unwrapped|detection] [--lines N] [--format text|ansi] [--ansi]
+herdr agent prompt    <target> "<text>" [--wait] [--until STATUS]... [--timeout MS]   # submit a prompt (types + submits)
+herdr agent send-keys <target> <key> [key…]                                          # named keys only (no text)
+herdr agent rename    <target> <name> | --clear
+herdr agent focus     <target>
+herdr agent wait      <target> [--until STATUS]... [--timeout MS]                    # default matches idle|done|blocked
+herdr agent attach    <target> [--takeover]
+herdr agent start     <name> --kind <KIND> --pane <ID> [--timeout MS] [-- <agent-args>...]
+herdr agent explain   <target> [--json] | --file <path> --agent <label>
 ```
 
-### `agent send` vs `pane run` — don't mix them up
+### `agent prompt` vs `pane run` — don't mix them up
 
-`agent send` writes **literal text with no Enter** — it types into the agent's
-prompt but does not submit. To submit, follow with
-`pane send-keys <pane> Enter`, or just use `pane run <pane> "<text>"` which
-types **and** presses Enter. The CLI itself states: *"agent send writes literal
-text; use pane run when you want command text plus Enter."*
+`agent prompt <target> "<text>"` **submits** the prompt — it types the text *and*
+sends the submit keystroke, so the agent starts working on it immediately. Do
+**not** follow it with `pane send-keys <pane> Enter`; that fires a second, empty
+prompt. There is no "literal text, no submit" agent command — for that, target
+the agent's own pane with `pane send-text <pane> "<text>"`.
+
+For shell panes the equivalent pair is `pane run <pane> "<cmd>"` (types +
+Enter) vs `pane send-text <pane> "<text>"` (literal, no Enter).
 
 ## Starting an agent
 
+`agent start` launches a supported agent **in a pane that already exists and is
+sitting at an interactive shell prompt** — it does not create a pane or set a
+cwd. So create the pane first (with the cwd you want), then start the agent:
+
 ```sh
-herdr agent start <name> [OPTIONS] -- <argv...>
-# --cwd PATH · --workspace <id> · --tab <id> · --split right|down · --env KEY=VALUE · --focus|--no-focus
+herdr agent start <NAME> --kind <KIND> --pane <ID> [--timeout MS] [-- <agent-args>...]
+# --kind  required — canonical executable:
+#         pi|claude|codex|gemini|cursor|devin|agy|cline|omp|mastracode|opencode|
+#         copilot|kimi|kiro|droid|amp|grok|hermes|kilo|qodercli|maki
+# --pane  required — an existing pane at its shell prompt
+# --timeout  wait for interactive readiness (default 30000; max 300000)
+# -- <agent-args>  appended to the agent's argv. Pass FLAGS ONLY — --kind
+#                  already selects the binary, so don't repeat it
+#                  (e.g. `-- --dangerously-skip-permissions`, not `-- claude …`).
 ```
 
-`<argv...>` after `--` is the full command line to launch (e.g. `claude`,
-`codex`, `gemini`). `--split` puts the agent in a new split pane; `--tab` /
-`--workspace` place it in a specific container.
-
 ```sh
-herdr agent start claude --cwd ~/Repos/foo --split right --focus -- claude
+# 1. open a tab whose shell starts in the repo (returns result.root_pane.pane_id)
+herdr tab create --workspace w4 --cwd ~/Repos/foo --no-focus
+# 2. start claude in that pane
+herdr agent start worker --kind claude --pane w4:pZ --timeout 120000
 ```
 
 ## Agent fields
@@ -65,42 +79,42 @@ From `agent get` / `api snapshot` → `agents`: `agent`, `agent_session`,
 - `agent` — detected label (e.g. `claude`).
 - `agent_session` — session identity (`source`, `agent`, `kind`, `value`); use it
   to correlate with the agent's own session files.
-- `agent_status` — `idle` | `working` | `blocked` | `unknown`.
+- `agent_status` — `idle` | `working` | `blocked` | `unknown` | `done`.
 
 ## Patterns
 
-Launch an agent in a fresh split, then wait for it to reach its initial idle
+Create a pane, start an agent in it, and wait for it to reach its initial idle
 prompt:
 ```sh
-herdr agent start claude --cwd ~/Repos/foo --split right --focus -- claude
-# the created pane id is in result.pane.pane_id of the start response
-herdr agent wait <pane-id> --status idle --timeout 30000
+herdr tab create --workspace w4 --cwd ~/Repos/foo --no-focus   # note result.root_pane.pane_id
+herdr agent start worker --kind claude --pane w4:pZ --timeout 120000
+herdr agent wait  w4:pZ --until idle --timeout 120000
 ```
 
-Send a prompt and submit it (the agent's pane id is in `result.agent.pane_id`):
+Submit a prompt and wait for the agent to settle (the pane id is
+`result.agent.pane_id` from `start`, or find it via `agent list`):
 ```sh
-herdr agent send <pane-id> "refactor the auth middleware"
-herdr pane send-keys <pane-id> Enter
+herdr agent prompt w4:pZ "refactor the auth middleware" --wait --until idle --timeout 300000
+herdr agent read   w4:pZ --source recent --lines 80
 ```
 
-Wait for an agent to finish working (a finished agent reports `idle` — note `done` is valid only for the lower-level `wait agent-status`, not for `agent wait`), then read its last output:
-```sh
-herdr agent wait w4:pD --status idle --timeout 300000
-herdr agent read  w4:pD --source recent --lines 80
-```
+`--wait` on `agent prompt` blocks until the first state change after submission
+(a 5 s stall window, then it matches `idle`/`done`/`blocked` by default);
+without `--wait` it submits and returns immediately.
 
 Ask Herdr to summarize what an agent is doing right now:
 ```sh
-herdr agent explain w4:pD --json
+herdr agent explain w4:pZ --json
 ```
 
 ## Notes
 
-- `agent wait` blocks until the agent reaches the given status or `--timeout`
-  (ms) elapses. For a specific output string rather than a status, use
-  `wait output <pane> --match "<text>"` instead.
-- Two different "wait" commands with slightly different status sets:
-  `agent wait` takes `idle|working|blocked|unknown`; the lower-level
-  `wait agent-status` also accepts `done`.
+- `agent wait` blocks until the agent reaches a matching state or `--timeout`
+  (ms) elapses. Without `--until` it matches `idle|done|blocked`; pass
+  `--until unknown` (or `working`) to match those explicitly. For a specific
+  output string rather than a status, use `pane wait-output <pane> --match "<text>"`.
+- `agent_status` values are `idle`, `working`, `blocked`, `unknown`, and `done`.
+  `agent wait` / `agent prompt --until` accept any of them.
 - Every agent record includes `pane_id`/`tab_id`/`workspace_id`, so you can drop
-  from an agent target to its pane for `pane run` / `send-keys` / `read`.
+  from an agent target to its pane for `pane run` / `send-text` / `send-keys` /
+  `read`.

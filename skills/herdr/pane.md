@@ -120,7 +120,7 @@ herdr pane move w4:pD --new-tab --label build
 
 Wait for a command to finish, then read the tail:
 ```sh
-herdr wait output w4:pD --match "BUILD SUCCESSFUL" --timeout 60000 \
+herdr pane wait-output w4:pD --match "BUILD SUCCESSFUL" --timeout 60000 \
   && herdr pane read w4:pD --source recent --lines 50
 ```
 
